@@ -38,7 +38,6 @@ export default function MainPage() {
 
   return (
     <div className="relative w-full h-full min-h-screen">
-      {/* Background Image */}
       <div
         className="fixed inset-0 z-0"
         style={{
@@ -54,7 +53,7 @@ export default function MainPage() {
       {/* Main Content */}
       <main className="relative z-10 pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white/50 backdrop-blur-md shadow-xl rounded-lg p-8">
+          <div className="bg-white/50 backdrop-blur-sm shadow-xl rounded-lg p-8">
             <h1 className="text-3xl font-bold text-sky-700 mb-4">
               주차장 검색
             </h1>
