@@ -34,6 +34,10 @@ export default function AuthPage() {
 
   // 회원가입 핸들러
   const handleSignup = async () => {
+    if (!signupName || !signupEmail || !signupPassword) {
+      alert("이름, 이메일, 비밀번호를 모두 입력해주세요.");
+      return;
+    }
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
