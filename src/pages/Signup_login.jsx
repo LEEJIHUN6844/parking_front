@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
@@ -21,6 +22,9 @@ export default function AuthPage() {
       const data = await res.json();
       console.log("로그인 결과:", data);
       if (data.success) {
+        Cookies.set("login_cookie", data.token, { expires: 7 });
+        Cookies.set("user", JSON.stringify(data.user), { expires: 7 });
+
         alert(`환영합니다, ${data.user.name}님!`);
         navigate("/");
       } else {
@@ -42,13 +46,16 @@ export default function AuthPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: signupName, email: signupEmail, password: signupPassword }),
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
+        }),
       });
       const data = await res.json();
       console.log("회원가입 결과:", data);
       if (data.success) {
         alert("회원가입 완료! 로그인 해주세요.");
-        // 회원가입 성공 시 로그인 탭으로 전환
         setActiveTab("login");
       } else {
         alert(data.message);
@@ -60,7 +67,6 @@ export default function AuthPage() {
   };
 
   return (
-    // 전체 화면 컨테이너에 p-4를 추가하여 모바일에서 화면 가장자리에 붙는 것을 방지
     <div className="relative w-full h-full flex justify-center items-center min-h-screen p-4">
       {/* 배경 이미지 */}
       <div
@@ -82,7 +88,9 @@ export default function AuthPage() {
         >
           {/* 로그인 (반응형 스타일 적용) */}
           <div className="w-1/2 p-6 md:p-12 flex flex-col justify-center">
-            <h2 className="text-xl md:text-2xl font-bold text-sky-600 mb-6">LOGIN</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-sky-600 mb-6">
+              LOGIN
+            </h2>
             <input
               type="email"
               placeholder="이메일"
@@ -107,7 +115,9 @@ export default function AuthPage() {
 
           {/* 회원가입 (반응형 스타일 적용) */}
           <div className="w-1/2 p-6 md:p-12 flex flex-col justify-center">
-            <h2 className="text-xl md:text-2xl font-bold text-sky-600 mb-6">SIGN UP</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-sky-600 mb-6">
+              SIGN UP
+            </h2>
             <input
               type="text"
               placeholder="이름"
@@ -141,7 +151,9 @@ export default function AuthPage() {
         {/* 슬라이드 토글 버튼 (반응형 스타일 적용) */}
         <div className="absolute top-4 right-4 md:top-5 md:right-5">
           <button
-            onClick={() => setActiveTab(activeTab === "login" ? "signup" : "login")}
+            onClick={() =>
+              setActiveTab(activeTab === "login" ? "signup" : "login")
+            }
             className="text-sky-600 hover:underline text-sm md:text-base"
           >
             {activeTab === "login" ? "Go to Sign up" : "Go to Login"}

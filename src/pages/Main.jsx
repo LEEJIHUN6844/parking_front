@@ -1,41 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
 import KakaoMap from "./KakaoMap";
 
 export default function MainPage() {
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
-
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/"); 
-        const data = await res.json();
-        if (data.success) {
-          setUser(data.user);
-        } else {
-          navigate("/");
-        }
-      } catch (err) {
-        console.error(err);
-        navigate("/");
-      }
-    };
-    fetchUser();
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout");
-      setUser(null);
-      navigate("/");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   return (
     <div className="relative w-full h-full min-h-screen">
       <div
@@ -47,18 +12,15 @@ export default function MainPage() {
         }}
       ></div>
 
-      {/* Navbar */}
-      {user && <Navbar user={user} onLogout={handleLogout} />}
-
       {/* Main Content */}
       <main className="relative z-10 pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white/50 backdrop-blur-sm shadow-xl rounded-lg p-8">
-            <h1 className="text-3xl font-bold text-sky-700 mb-4">
+          <div className="bg-white shadow-xl rounded-lg p-8">
+            <h1 className="text-4xl font-bold text-sky-700 mb-4">
               주차장 검색
             </h1>
             <p className="text-gray-800 mb-6">
-              아래에서 주차장을 검색하거나 지도를 통해 위치를 확인하세요.
+              아래에서 주차장을 검색하거나 지도를 통해 위치를 확인해보세요!
             </p>
 
             {/* Search Bar */}
