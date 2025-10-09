@@ -24,7 +24,6 @@ export default function AuthPage() {
       if (data.success) {
         Cookies.set("login_cookie", data.token, { expires: 7 });
         Cookies.set("user", JSON.stringify(data.user), { expires: 7 });
-
         alert(`환영합니다, ${data.user.name}님!`);
         navigate("/");
       } else {

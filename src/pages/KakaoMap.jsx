@@ -127,6 +127,8 @@ const hotspots = [
 const KakaoMap = () => {
   const [map, setMap] = useState(null);
   const [infowindow, setInfowindow] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -168,114 +170,121 @@ const KakaoMap = () => {
   }, []);
 
   const fetchNearbyParking = async () => {
-    if (!map) return;
-    const center = map.getCenter();
-    const lat = center.getLat();
-    const lng = center.getLng();
+    if (!map || isLoading) return;
 
-    const apiKey = process.env.REACT_APP_SEOUL_DATA_API_KEY;
-    if (!apiKey) return;
+    setIsLoading(true);
+    try {
+      const center = map.getCenter();
+      const lat = center.getLat();
+      const lng = center.getLng();
 
-    // 기존 마커 제거
-    if (map.markers) map.markers.forEach((marker) => marker.setMap(null));
-    map.markers = [];
+      // 기존 마커 제거
+      if (map.markers) map.markers.forEach((marker) => marker.setMap(null));
+      map.markers = [];
 
-    for (const spot of hotspots) {
-      try {
-        const res = await fetch(
-          `http://openapi.seoul.go.kr:8088/${apiKey}/json/citydata/1/1/${spot.code}`
-        );
-        const data = await res.json();
-        const cityData = data.CITYDATA;
+      for (const spot of hotspots) {
+        try {
+          const res = await fetch(`/api/seoul/parking/${spot.code}`);
+          const data = await res.json();
+          const cityData = data.CITYDATA;
 
-        if (!cityData?.PRK_STTS) continue;
+          if (!cityData?.PRK_STTS) continue;
 
-        const lots = Array.isArray(cityData.PRK_STTS)
-          ? cityData.PRK_STTS
-          : [cityData.PRK_STTS];
+          const lots = Array.isArray(cityData.PRK_STTS)
+            ? cityData.PRK_STTS
+            : [cityData.PRK_STTS];
 
-        lots.forEach((lot) => {
-          const lotLat = parseFloat(lot.LAT);
-          const lotLng = parseFloat(lot.LNG);
-          if (!lotLat || !lotLng) return;
+          lots.forEach((lot) => {
+            const lotLat = parseFloat(lot.LAT);
+            const lotLng = parseFloat(lot.LNG);
+            if (!lotLat || !lotLng) return;
 
-          const distance = Math.sqrt(
-            Math.pow(lat - lotLat, 2) + Math.pow(lng - lotLng, 2)
-          );
-          if (distance > 0.01) return; // 1km 이상 제외
+            const distance = Math.sqrt(
+              Math.pow(lat - lotLat, 2) + Math.pow(lng - lotLng, 2)
+            );
+            if (distance > 0.01) return; // 1km 이상 제외
 
-          const marker = new window.kakao.maps.Marker({
-            position: new window.kakao.maps.LatLng(lotLat, lotLng),
-            map,
+            const marker = new window.kakao.maps.Marker({
+              position: new window.kakao.maps.LatLng(lotLat, lotLng),
+              map,
+            });
+            map.markers.push(marker);
+
+            const availableSpaces = lot.CPCTY - (lot.CUR_PRK_CNT || 0);
+            const iwContent = `
+              <div style="padding:10px; font-size:12px; width:280px; line-height:1.6;">
+                <div style="font-size:16px; font-weight:bold; color:#333; margin-bottom:5px;">${
+                  lot.PRK_NM
+                }</div>
+                <div style="font-size:13px; color:#666; margin-bottom:10px;">${
+                  lot.PRK_TYPE || ""
+                }</div>
+                <hr style="border:0; border-top:1px solid #eee; margin-bottom:10px;">
+                <div><strong>주소:</strong> ${lot.ADDRESS}</div>
+                <div><strong>운영시간:</strong> ${
+                  lot.OPR_BGN_TM && lot.OPR_END_TM
+                    ? `${lot.OPR_BGN_TM} - ${lot.OPR_END_TM}`
+                    : "24시간"
+                }</div>
+                <div><strong>요금:</strong> ${
+                  lot.RATES
+                    ? `${lot.RATES}원 / ${lot.TIME_RATES || "?"}분`
+                    : "정보 없음"
+                }</div>
+                <div style="margin-top:10px; text-align:center; font-size:14px; font-weight:bold;">
+                  ${
+                    lot.CUR_PRK_YN === "Y" && lot.CUR_PRK_CNT
+                      ? `<span style="color: #007bff;">주차 가능: ${availableSpaces} 대</span>`
+                      : '<span style="color: #868e96;">실시간 정보 없음</span>'
+                  }
+                </div>
+              </div>`;
+
+            // 클릭 시 InfoWindow
+            window.kakao.maps.event.addListener(marker, "click", () => {
+              infowindow.setContent(iwContent);
+              infowindow.open(map, marker);
+            });
+
+            // 마커에서 벗어나면 InfoWindow 닫기
+            window.kakao.maps.event.addListener(marker, "mouseout", () => {
+              infowindow.close();
+            });
           });
-          map.markers.push(marker);
-
-          const availableSpaces = lot.CPCTY - (lot.CUR_PRK_CNT || 0);
-          const iwContent = `
-            <div style="padding:10px; font-size:12px; width:280px; line-height:1.6;">
-              <div style="font-size:16px; font-weight:bold; color:#333; margin-bottom:5px;">${
-                lot.PRK_NM
-              }</div>
-              <div style="font-size:13px; color:#666; margin-bottom:10px;">${
-                lot.PRK_TYPE || ""
-              }</div>
-              <hr style="border:0; border-top:1px solid #eee; margin-bottom:10px;">
-              <div><strong>주소:</strong> ${lot.ADDRESS}</div>
-              <div><strong>운영시간:</strong> ${
-                lot.OPR_BGN_TM && lot.OPR_END_TM
-                  ? `${lot.OPR_BGN_TM} - ${lot.OPR_END_TM}`
-                  : "24시간"
-              }</div>
-              <div><strong>요금:</strong> ${
-                lot.RATES
-                  ? `${lot.RATES}원 / ${lot.TIME_RATES || "?"}분`
-                  : "정보 없음"
-              }</div>
-              <div style="margin-top:10px; text-align:center; font-size:14px; font-weight:bold;">
-                ${
-                  lot.CUR_PRK_YN === "Y" && lot.CUR_PRK_CNT
-                    ? `<span style="color: #007bff;">주차 가능: ${availableSpaces} 대</span>`
-                    : '<span style="color: #868e96;">실시간 정보 없음</span>'
-                }
-              </div>
-            </div>`;
-
-          // 클릭 시 InfoWindow
-          window.kakao.maps.event.addListener(marker, "click", () => {
-            infowindow.setContent(iwContent);
-            infowindow.open(map, marker);
-          });
-
-          // 마커에서 벗어나면 InfoWindow 닫기
-          window.kakao.maps.event.addListener(marker, "mouseout", () => {
-            infowindow.close();
-          });
-        });
-      } catch (err) {
-        console.error(`Error fetching data for ${spot.name}:`, err);
+        } catch (err) {
+          console.error(`Error fetching data for ${spot.name}:`, err);
+        }
       }
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const buttonStyle = {
+    position: "absolute",
+    zIndex: 10,
+    top: 10,
+    left: 515,
+    padding: "8px 12px",
+    backgroundColor: isHovering ? "#f0f0f0" : "white",
+    color: "#007bff",
+    border: "0.5px solid #ddd",
+    borderRadius: "30px",
+    cursor: isLoading ? "not-allowed" : "pointer",
+    opacity: isLoading ? 0.7 : 1,
+    transition: "background-color 0.2s",
   };
 
   return (
     <div style={{ position: "relative", width: "100%", height: "600px" }}>
       <button
-        style={{
-          position: "absolute",
-          zIndex: 10,
-          top: 10,
-          left: 550,
-          padding: "8px 12px",
-          backgroundColor: "white",
-          color: "gray",
-          border: "none",
-          borderRadius: "25px",
-          cursor: "pointer",
-          hover: { backgroundColor: "blue" },
-        }}
+        style={buttonStyle}
         onClick={fetchNearbyParking}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+        disabled={isLoading}
       >
-        현 지도 주변 검색
+        {isLoading ? "검색 중..." : "⎋ 현 지도 주변 검색"}
       </button>
       <div id="map" style={{ width: "100%", height: "100%" }}></div>
     </div>

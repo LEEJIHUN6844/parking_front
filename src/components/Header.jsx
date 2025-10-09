@@ -37,7 +37,7 @@ export default function Header() {
         <div>
           {user ? (
             <div className="flex items-center space-x-4">
-              <span>환영합니다, {user.name}님!😁</span>
+              <span>환영합니다! {user.name}님😁</span>
               <button
                 onClick={() => navigate("/mypage")}
                 className="font-bold text-sky-600 cursor-pointer"
