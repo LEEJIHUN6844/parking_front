@@ -1,6 +1,33 @@
-import KakaoMap from "./KakaoMap";
+import { useState, useEffect } from "react";
+import KakaoMap from "../components/map/KakaoMap";
+import SearchBar from "../components/search/SearchBar";
+import ParkingList from "../components/parking/ParkingList";
 
 export default function MainPage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [parkingLots, setParkingLots] = useState([]);
+
+  useEffect(() => {
+    // 이 부분은 주변 주차장 목록을 위한 로직으로, 지도와는 별개로 작동합니다.
+    console.log(`Searching for: ${searchTerm}`);
+
+    const fakeData = [
+      {
+        id: 1,
+        name: "주차장 A",
+        address: "서울시 강남구",
+        status: "이용 가능",
+      },
+      {
+        id: 2,
+        name: "주차장 B",
+        address: "서울시 서초구",
+        status: "만차",
+      },
+    ];
+    setParkingLots(fakeData);
+  }, [searchTerm]);
+
   return (
     <div className="relative w-full h-full min-h-screen">
       <div
@@ -12,7 +39,6 @@ export default function MainPage() {
         }}
       ></div>
 
-      {/* Main Content */}
       <main className="relative z-10 pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white shadow-xl rounded-lg p-8">
@@ -23,40 +49,12 @@ export default function MainPage() {
               아래에서 주차장을 검색하거나 지도를 통해 위치를 확인해보세요!
             </p>
 
-            {/* Search Bar */}
-            <div className="mb-8">
-              <input
-                type="text"
-                placeholder="주소, 장소 또는 키워드 입력..."
-                className="w-full px-4 py-3 border rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
+            <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-            {/* Kakao Map */}
+            {/* KakaoMap은 이제 props 없이 독립적으로 작동합니다. */}
             <KakaoMap />
 
-            {/* Placeholder for Parking List */}
-            <div>
-              <h2 className="text-2xl font-bold text-sky-700 mt-4 mb-4">
-                주변 주차장 목록
-              </h2>
-              <ul className="space-y-4">
-                <li className="bg-white/70 p-4 rounded-lg shadow-md flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold">주차장 A</h3>
-                    <p className="text-sm text-gray-600">서울시 강남구</p>
-                  </div>
-                  <span className="text-green-600 font-bold">이용 가능</span>
-                </li>
-                <li className="bg-white/70 p-4 rounded-lg shadow-md flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold">주차장 B</h3>
-                    <p className="text-sm text-gray-600">서울시 서초구</p>
-                  </div>
-                  <span className="text-red-600 font-bold">만차</span>
-                </li>
-              </ul>
-            </div>
+            <ParkingList parkingLots={parkingLots} />
           </div>
         </div>
       </main>

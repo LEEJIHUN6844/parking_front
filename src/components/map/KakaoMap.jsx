@@ -128,7 +128,7 @@ const KakaoMap = () => {
   const [map, setMap] = useState(null);
   const [infowindow, setInfowindow] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -150,24 +150,52 @@ const KakaoMap = () => {
           removable: true,
         });
         setInfowindow(iw);
-
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const lat = position.coords.latitude;
-              const lng = position.coords.longitude;
-              mapInstance.setCenter(new window.kakao.maps.LatLng(lat, lng));
-            },
-            () => {
-              console.warn("위치 정보를 가져올 수 없습니다.");
-            }
-          );
-        }
       });
     };
 
     return () => document.head.removeChild(script);
   }, []);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          if (map) {
+            map.setCenter(new window.kakao.maps.LatLng(lat, lng));
+          }
+        },
+        (err) => {
+          console.error("Error getting user location:", err);
+        }
+      );
+    }
+  }, [map]);
+
+  useEffect(() => {
+    if (map && userLocation) {
+      const imageSrc = "/assets/location.png";
+      const imageSize = new window.kakao.maps.Size(40, 40);
+      const imageOption = { offset: new window.kakao.maps.Point(15, 30) };
+
+      const markerImage = new window.kakao.maps.MarkerImage(
+        imageSrc,
+        imageSize,
+        imageOption
+      );
+
+      const marker = new window.kakao.maps.Marker({
+        position: new window.kakao.maps.LatLng(
+          userLocation.lat,
+          userLocation.lng
+        ),
+        image: markerImage,
+      });
+      marker.setMap(map);
+    }
+  }, [map, userLocation]);
 
   const fetchNearbyParking = async () => {
     if (!map || isLoading) return;
@@ -202,7 +230,7 @@ const KakaoMap = () => {
             const distance = Math.sqrt(
               Math.pow(lat - lotLat, 2) + Math.pow(lng - lotLng, 2)
             );
-            if (distance > 0.01) return; // 1km 이상 제외
+            if (distance > 0.03) return; // 3km 이상 제외
 
             const marker = new window.kakao.maps.Marker({
               position: new window.kakao.maps.LatLng(lotLat, lotLng),
@@ -260,33 +288,32 @@ const KakaoMap = () => {
     }
   };
 
-  const buttonStyle = {
-    position: "absolute",
-    zIndex: 10,
-    top: 10,
-    left: 515,
-    padding: "8px 12px",
-    backgroundColor: isHovering ? "#f0f0f0" : "white",
-    color: "#007bff",
-    border: "0.5px solid #ddd",
-    borderRadius: "30px",
-    cursor: isLoading ? "not-allowed" : "pointer",
-    opacity: isLoading ? 0.7 : 1,
-    transition: "background-color 0.2s",
+  const goToUserLocation = () => {
+    if (map && userLocation) {
+      map.setCenter(
+        new window.kakao.maps.LatLng(userLocation.lat, userLocation.lng)
+      );
+    }
   };
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "600px" }}>
+    <div className="relative w-full h-[450px] md:h-screen">
       <button
-        style={buttonStyle}
+        className={`absolute z-10 top-2 left-1/2 -translate-x-1/2 md:left-[515px] md:-translate-x-0 py-1 px-2 bg-white text-blue-500 border border-gray-300 rounded-full cursor-pointer transition-colors hover:bg-gray-100 ${
+          isLoading ? "opacity-70 cursor-not-allowed" : ""
+        }`}
         onClick={fetchNearbyParking}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
         disabled={isLoading}
       >
         {isLoading ? "검색 중..." : "⎋ 현 지도 주변 검색"}
       </button>
-      <div id="map" style={{ width: "100%", height: "100%" }}></div>
+      <button
+        className="absolute z-10 bottom-7 left-1 md:top-[740px] md:left-[15px] w-12 h-12 bg-white border border-gray-300 rounded-full cursor-pointer flex justify-center items-center transition-colors hover:bg-gray-100"
+        onClick={goToUserLocation}
+      >
+        <img src="/assets/my.png" alt="My Location" className="w-8 h-8" />
+      </button>
+      <div id="map" className="w-full h-full"></div>
     </div>
   );
 };
