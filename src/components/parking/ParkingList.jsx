@@ -1,6 +1,10 @@
 import ParkingListItem from "./ParkingListItem";
 
-export default function ParkingList({ parkingLots }) {
+export default function ParkingList({ parkingLots, loading }) {
+  if (loading) {
+    return <p className="text-gray-500">검색 중...</p>;
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-sky-700 mt-4 mb-4">
@@ -8,8 +12,8 @@ export default function ParkingList({ parkingLots }) {
       </h2>
       {parkingLots.length > 0 ? (
         <ul className="space-y-4">
-          {parkingLots.map((lot) => (
-            <ParkingListItem key={lot.id} lot={lot} />
+          {parkingLots.map((lot, index) => (
+            <ParkingListItem key={lot.id || index} lot={lot} />
           ))}
         </ul>
       ) : (
