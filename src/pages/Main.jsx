@@ -34,25 +34,33 @@ export default function MainPage() {
 
     // 공영/민영 필터
     if (filterType === "public") {
-      filtered = filtered.filter(lot => lot.PRK_TYPE && lot.PRK_TYPE.includes("공영"));
+      filtered = filtered.filter(
+        (lot) => lot.PRK_TYPE && lot.PRK_TYPE.includes("공영")
+      );
     } else if (filterType === "private") {
-      filtered = filtered.filter(lot => lot.PRK_TYPE && !lot.PRK_TYPE.includes("공영"));
+      filtered = filtered.filter(
+        (lot) => lot.PRK_TYPE && !lot.PRK_TYPE.includes("공영")
+      );
     }
 
     // 운영시간 필터 (현재 시간 기준은 구현이 복잡하므로 24시간 운영만 우선 구현)
     if (filterOperatingHours === "24h") {
-      filtered = filtered.filter(lot => lot.OPR_BGN_TM === "0000" && lot.OPR_END_TM === "2400");
+      filtered = filtered.filter(
+        (lot) => lot.OPR_BGN_TM === "0000" && lot.OPR_END_TM === "2400"
+      );
     }
 
     // 요금 필터
     if (filterFees === "free") {
-      filtered = filtered.filter(lot => lot.RATES === "0");
+      filtered = filtered.filter((lot) => lot.RATES === "0");
     } else if (filterFees === "paid") {
-      filtered = filtered.filter(lot => lot.RATES !== "0");
+      filtered = filtered.filter((lot) => lot.RATES !== "0");
     }
 
-    const regularParkingLots = filtered.filter(lot => !lot.hasEVCharger);
-    const evChargingStations = filtered.filter(lot => lot.hasEVCharger);
+    const regularParkingLots = filtered.filter(
+      (lot) => !lot.hasEVCharger || lot.hasEVCharger
+    );
+    const evChargingStations = filtered.filter((lot) => lot.hasEVCharger);
 
     return { regularParkingLots, evChargingStations };
   }, [parkingLots, filterType, filterOperatingHours, filterFees]);
@@ -94,7 +102,9 @@ export default function MainPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 공영/민영 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">유형</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    유형
+                  </label>
                   <div className="mt-1 flex space-x-4">
                     <label className="inline-flex items-center">
                       <input
@@ -134,7 +144,9 @@ export default function MainPage() {
 
                 {/* 운영시간 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">운영시간</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    운영시간
+                  </label>
                   <div className="mt-1 flex space-x-4">
                     <label className="inline-flex items-center">
                       <input
@@ -143,7 +155,9 @@ export default function MainPage() {
                         name="operatingHours"
                         value="all"
                         checked={filterOperatingHours === "all"}
-                        onChange={(e) => setFilterOperatingHours(e.target.value)}
+                        onChange={(e) =>
+                          setFilterOperatingHours(e.target.value)
+                        }
                       />
                       <span className="ml-2">전체</span>
                     </label>
@@ -154,27 +168,20 @@ export default function MainPage() {
                         name="operatingHours"
                         value="24h"
                         checked={filterOperatingHours === "24h"}
-                        onChange={(e) => setFilterOperatingHours(e.target.value)}
+                        onChange={(e) =>
+                          setFilterOperatingHours(e.target.value)
+                        }
                       />
                       <span className="ml-2">24시간</span>
                     </label>
-                    {/* <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="operatingHours"
-                        value="now"
-                        checked={filterOperatingHours === "now"}
-                        onChange={(e) => setFilterOperatingHours(e.target.value)}
-                      />
-                      <span className="ml-2">현재 운영 중</span>
-                    </label> */}
                   </div>
                 </div>
 
                 {/* 요금 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">요금</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    요금
+                  </label>
                   <div className="mt-1 flex space-x-4">
                     <label className="inline-flex items-center">
                       <input
@@ -214,7 +221,9 @@ export default function MainPage() {
 
                 {/* 전기차 충전소 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">기타</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    기타
+                  </label>
                   <div className="mt-1">
                     <label className="inline-flex items-center">
                       <input
@@ -223,7 +232,7 @@ export default function MainPage() {
                         checked={filterEV}
                         onChange={(e) => setFilterEV(e.target.checked)}
                       />
-                      <span className="ml-2">전기차 충전소</span>
+                      <span className="ml-2">전기차 충전기</span>
                     </label>
                   </div>
                 </div>
@@ -231,9 +240,15 @@ export default function MainPage() {
             </div>
 
             {filterEV ? (
-              <ParkingList title="전기차 충전소" parkingLots={evChargingStations} />
+              <ParkingList
+                title="전기차 충전소"
+                parkingLots={evChargingStations}
+              />
             ) : (
-              <ParkingList title="일반 주차장" parkingLots={regularParkingLots} />
+              <ParkingList
+                title="일반 주차장"
+                parkingLots={regularParkingLots}
+              />
             )}
           </div>
         </div>

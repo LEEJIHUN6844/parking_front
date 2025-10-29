@@ -28,8 +28,14 @@ export default function ParkingListItem({ lot }) {
           : "정보 없음"}
       </p>
       <p className="text-sm text-sky-700 mb-2">
-        <strong>전기차 충전 대수:</strong>
-        {lot.EV_CHRG_CNT !== undefined ? lot.EV_CHRG_CNT : "정보 없음"}
+        <strong>전기차 충전 가능 대수:</strong>{" "}
+        {lot.evChargers && lot.evChargers.length > 0
+          ? `${
+              lot.evChargers.filter(
+                (charger) => charger.CHARGER_STAT === "사용가능"
+              ).length
+            } / ${lot.evChargers.length}`
+          : "정보 없음"}
       </p>
       <div className={`font-bold ${statusColor}`}>{statusText}</div>
     </li>

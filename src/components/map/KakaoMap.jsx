@@ -349,7 +349,6 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
                   <div style="margin-bottom:5px;">
                     <div>총 충전기: ${totalChargers}대</div>
                     <div>사용 가능: ${availableChargers}대</div>
-                    
                   </div>
                 `;
               } else {
