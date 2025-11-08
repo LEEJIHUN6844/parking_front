@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import KakaoMap from "../components/map/KakaoMap";
 import SearchBar from "../components/search/SearchBar";
 import ParkingList from "../components/parking/ParkingList";
@@ -8,13 +8,19 @@ export default function MainPage() {
   const [parkingLots, setParkingLots] = useState([]);
   const [mapCenter, setMapCenter] = useState(null);
   const [filterType, setFilterType] = useState("all"); // 'all', 'public', 'private'
-  const [filterOperatingHours, setFilterOperatingHours] = useState("all"); // 'all', '24h', 'now'
+  // const [filterOperatingHours, setFilterOperatingHours] = useState("all"); // ◀◀◀ 1. 운영시간 필터 상태 제거
   const [filterFees, setFilterFees] = useState("all"); // 'all', 'free', 'paid'
   const [filterEV, setFilterEV] = useState(false); // boolean
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       alert("검색어를 입력해주세요.");
+      return;
+    }
+
+    // window.kakao가 로드되었는지 확인
+    if (!window.kakao || !window.kakao.maps) {
+      alert("지도 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
       return;
     }
 
@@ -32,38 +38,34 @@ export default function MainPage() {
   const getFilteredParkingLots = useMemo(() => {
     let filtered = parkingLots;
 
-    // 공영/민영 필터
     if (filterType === "public") {
       filtered = filtered.filter(
-        (lot) => lot.PRK_TYPE && lot.PRK_TYPE.includes("공영")
+        (lot) =>
+          lot.PRK_TYPE &&
+          (lot.PRK_TYPE.includes("NW") || lot.PRK_TYPE.includes("NS"))
       );
     } else if (filterType === "private") {
       filtered = filtered.filter(
-        (lot) => lot.PRK_TYPE && !lot.PRK_TYPE.includes("공영")
+        (lot) =>
+          lot.PRK_TYPE &&
+          !lot.PRK_TYPE.includes("NW") &&
+          !lot.PRK_TYPE.includes("NS")
       );
     }
 
-    // 운영시간 필터 (현재 시간 기준은 구현이 복잡하므로 24시간 운영만 우선 구현)
-    if (filterOperatingHours === "24h") {
-      filtered = filtered.filter(
-        (lot) => lot.OPR_BGN_TM === "0000" && lot.OPR_END_TM === "2400"
-      );
-    }
-
-    // 요금 필터
+    // 요금 필터 (RATES가 "0" 또는 0인 경우)
     if (filterFees === "free") {
-      filtered = filtered.filter((lot) => lot.RATES === "0");
+      filtered = filtered.filter((lot) => String(lot.RATES) === "0");
     } else if (filterFees === "paid") {
-      filtered = filtered.filter((lot) => lot.RATES !== "0");
+      filtered = filtered.filter((lot) => String(lot.RATES) !== "0");
     }
 
-    const regularParkingLots = filtered.filter(
-      (lot) => !lot.hasEVCharger || lot.hasEVCharger
-    );
+    const regularParkingLots = filtered;
+
     const evChargingStations = filtered.filter((lot) => lot.hasEVCharger);
 
     return { regularParkingLots, evChargingStations };
-  }, [parkingLots, filterType, filterOperatingHours, filterFees]);
+  }, [parkingLots, filterType, filterFees, filterEV]);
 
   const { regularParkingLots, evChargingStations } = getFilteredParkingLots;
 
@@ -99,7 +101,8 @@ export default function MainPage() {
             {/* 필터링 UI */}
             <div className="mt-8 p-4 bg-gray-50 rounded-lg shadow-inner">
               <h2 className="text-xl font-bold text-gray-800 mb-3">필터</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
                 {/* 공영/민영 필터 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
@@ -138,41 +141,6 @@ export default function MainPage() {
                         onChange={(e) => setFilterType(e.target.value)}
                       />
                       <span className="ml-2">민영</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 운영시간 필터 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    운영시간
-                  </label>
-                  <div className="mt-1 flex space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="operatingHours"
-                        value="all"
-                        checked={filterOperatingHours === "all"}
-                        onChange={(e) =>
-                          setFilterOperatingHours(e.target.value)
-                        }
-                      />
-                      <span className="ml-2">전체</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="operatingHours"
-                        value="24h"
-                        checked={filterOperatingHours === "24h"}
-                        onChange={(e) =>
-                          setFilterOperatingHours(e.target.value)
-                        }
-                      />
-                      <span className="ml-2">24시간</span>
                     </label>
                   </div>
                 </div>
@@ -246,7 +214,7 @@ export default function MainPage() {
               />
             ) : (
               <ParkingList
-                title="일반 주차장"
+                title="주변 주차장 목록"
                 parkingLots={regularParkingLots}
               />
             )}

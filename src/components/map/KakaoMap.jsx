@@ -124,6 +124,29 @@ const hotspots = [
   { name: "홍제폭포", code: "POI128" },
 ];
 
+// 헬퍼 함수: 데이터가 단일 객체일 경우 배열로 감싸줍니다.
+const ensureArray = (data) => {
+  if (!data) return [];
+  return Array.isArray(data) ? data : [data];
+};
+
+// 헬퍼 함수: 두 지점 간의 거리 계산 (Haversine 공식)
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371e3; // metres
+  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radians
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  const d = R * c; // in metres
+  return d;
+};
+
 const KakaoMap = ({ center, onParkingLotsChange }) => {
   const [map, setMap] = useState(null);
   const [infowindow, setInfowindow] = useState(null);
@@ -173,7 +196,6 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
           setUserLocation({ lat, lng });
           if (map) {
             map.setCenter(new window.kakao.maps.LatLng(lat, lng));
-            // fetchNearbyParking(); // 자동 검색 제거
           }
         },
         (err) => {
@@ -224,6 +246,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
         try {
           const res = await fetch(`/api/seoul/parking/${spot.code}`);
           const data = await res.json();
+
           const cityData = data.CITYDATA;
           console.log(
             "Fetched cityData for spot code",
@@ -236,16 +259,10 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
 
           const allChargerDetails = [];
           if (cityData.CHARGER_STTS) {
-            const chargerStations = Array.isArray(cityData.CHARGER_STTS)
-              ? cityData.CHARGER_STTS
-              : [cityData.CHARGER_STTS];
+            const chargerStations = ensureArray(cityData.CHARGER_STTS);
 
             chargerStations.forEach((station) => {
-              const details = Array.isArray(station.CHARGER_DETAILS)
-                ? station.CHARGER_DETAILS
-                : station.CHARGER_DETAILS
-                ? [station.CHARGER_DETAILS]
-                : [];
+              const details = ensureArray(station.CHARGER_DETAILS);
 
               details.forEach((detail) => {
                 allChargerDetails.push({
@@ -264,16 +281,8 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
               });
             });
           }
-          console.log(
-            "All extracted charger details for spot code",
-            spot.code,
-            ":",
-            allChargerDetails
-          );
 
-          const lots = Array.isArray(cityData.PRK_STTS)
-            ? cityData.PRK_STTS
-            : [cityData.PRK_STTS];
+          const lots = ensureArray(cityData.PRK_STTS);
 
           lots.forEach((lot) => {
             const lotLat = parseFloat(lot.LAT);
@@ -285,27 +294,8 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
             );
             if (distance > 0.03) return; // 3km 이상 제외
 
-            // Helper function to calculate distance between two lat/lng points (simple Euclidean for small distances)
-            const calculateDistance = (lat1, lng1, lat2, lng2) => {
-              const R = 6371e3; // metres
-              const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radians
-              const φ2 = (lat2 * Math.PI) / 180;
-              const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-              const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+            let evChargerInfoHtml = "";
 
-              const a =
-                Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) *
-                  Math.cos(φ2) *
-                  Math.sin(Δλ / 2) *
-                  Math.sin(Δλ / 2);
-              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-              const d = R * c; // in metres
-              return d;
-            };
-
-            // Check for EV charger using coordinate proximity
             const matchedChargers = allChargerDetails.filter((charger) => {
               const chargerLat = parseFloat(charger.STAT_Y);
               const chargerLng = parseFloat(charger.STAT_X);
@@ -317,12 +307,10 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
                 chargerLat,
                 chargerLng
               );
-              // console.log(`Distance between lot ${lot.PRK_NM} and charger ${charger.STAT_NM}: ${dist} meters`);
-              return dist < 100; // Match if within 100 meters
+              return dist < 300; // Match if within 100 meters
             });
             lot.evChargers = matchedChargers;
             lot.hasEVCharger = matchedChargers.length > 0;
-            // console.log(`Lot '${lot.PRK_NM}' (Address: '${lot.ADDRESS}') has EV chargers: ${lot.hasEVCharger}, matched chargers:`, matchedChargers);
 
             allLots.push(lot);
             const marker = new window.kakao.maps.Marker({
@@ -331,29 +319,35 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
             });
             map.markers.push(marker);
 
+            const isRealtime =
+              lot.CUR_PRK_YN === "Y" &&
+              lot.CUR_PRK_CNT !== null &&
+              lot.CUR_PRK_CNT !== undefined;
             const availableSpaces = lot.CPCTY - (lot.CUR_PRK_CNT || 0);
-            let evChargerInfoHtml = "";
+
+            evChargerInfoHtml = "";
             if (lot.hasEVCharger) {
-              const totalChargers = lot.evChargers.length;
-              const availableChargers = lot.evChargers.filter(
-                (charger) => charger.CHARGER_STAT === "사용가능"
+              const total = lot.evChargers.length;
+              const available = lot.evChargers.filter(
+                (c) => c.CHARGER_STAT === "사용가능"
               ).length;
 
               evChargerInfoHtml = `
-                <hr style="border:0; border-top:1px solid #eee; margin-top:10px; margin-bottom:10px;">
-                <div style="font-size:14px; font-weight:bold; color:sky; margin-bottom:5px;">전기차 충전소 정보</div>
-              `;
-
-              if (totalChargers > 0) {
-                evChargerInfoHtml += `
-                  <div style="margin-bottom:5px;">
-                    <div>총 충전기: ${totalChargers}대</div>
-                    <div>사용 가능: ${availableChargers}대</div>
+                <div style="margin-top:10px; padding:8px; background:#f0f9ff; border-radius:8px;">
+                  <div style="font-weight:bold; color:#007bff; margin-bottom:5px;">
+                    ⚡ 전기차 충전 정보
                   </div>
-                `;
-              } else {
-                evChargerInfoHtml += `<div>정보 없음</div>`;
-              }
+                  <div>총 충전기: ${total}대</div>
+                  <div>사용 가능: <strong style="color:green;">${available}</strong>대</div>
+                  ${
+                    total > 0
+                      ? `<div style="font-size:12px; color:#555;">충전소명: ${
+                          lot.evChargers[0].STAT_NM || "정보 없음"
+                        }</div>`
+                      : ""
+                  }
+                </div>
+              `;
             }
 
             const iwContent = `
@@ -365,34 +359,27 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
                 lot.PRK_TYPE || ""
               }</div>
                 <hr style="border:0; border-top:1px solid #eee; margin-bottom:10px;">
-                  <div><strong>주소:</strong> ${lot.ADDRESS}</div>
-                    <div><strong>운영시간:</strong> ${
-                      lot.OPR_BGN_TM && lot.OPR_END_TM
-                        ? `${lot.OPR_BGN_TM} - ${lot.OPR_END_TM}`
-                        : "24시간"
-                    }</div>
-                          <div><strong>요금:</strong> ${
-                            lot.RATES
-                              ? `${lot.RATES}원 / ${lot.TIME_RATES || "?"}분`
-                              : "정보 없음"
-                          }</div>
-                          <div style="margin-top:10px; text-align:center; font-size:14px; font-weight:bold;">
-                            ${
-                              lot.CUR_PRK_YN === "Y" && lot.CUR_PRK_CNT
-                                ? `<span style="color: #007bff;">주차 가능: ${availableSpaces} 대</span>`
-                                : '<span style="color: #868e96;">실시간 정보 없음</span>'
-                            }
-                          </div>
-                          ${evChargerInfoHtml}
-                        </div>`;
+                  <div><strong>주소:</strong> ${lot.ADDRESS || ""}</div>
+                  <div><strong>요금:</strong> ${
+                    lot.RATES && String(lot.RATES) !== "0"
+                      ? `${lot.RATES}원 / ${lot.TIME_RATES || "?"}분`
+                      : "무료 또는 정보 없음"
+                  }</div>
+                  <div style="margin-top:10px; text-align:center; font-size:14px; font-weight:bold;">
+                    ${
+                      isRealtime
+                        ? `<span style="color: #007bff;">주차 가능: ${availableSpaces} 대</span>`
+                        : '<span style="color: #868e96;">실시간 정보 없음</span>'
+                    }
+                  </div>
+                  ${evChargerInfoHtml}
+                </div>`;
 
-            // 클릭 시 InfoWindow
             window.kakao.maps.event.addListener(marker, "click", () => {
               infowindow.setContent(iwContent);
               infowindow.open(map, marker);
             });
 
-            // 마커에서 벗어나면 InfoWindow 닫기
             window.kakao.maps.event.addListener(marker, "mouseout", () => {
               infowindow.close();
             });
@@ -416,7 +403,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
   };
 
   return (
-    <div className="relative w-full h-[450px] md:h-screen">
+    <div className="relative w-full h-full min-h-[450px] md:h-screen">
       <button
         className={`absolute z-10 top-2 left-1/2 -translate-x-1/2 md:left-[515px] md:-translate-x-0 py-1 px-2 bg-white text-blue-500 border border-gray-300 rounded-full cursor-pointer transition-colors hover:bg-gray-100 ${
           isLoading ? "opacity-70 cursor-not-allowed" : ""
@@ -427,7 +414,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
         {isLoading ? "검색 중..." : "⎋ 현 지도 주변 검색"}
       </button>
       <button
-        className="absolute z-10 bottom-7 left-1 md:top-[740px] md:left-[15px] w-12 h-12 bg-white border border-gray-300 rounded-full cursor-pointer flex justify-center items-center transition-colors hover:bg-gray-100"
+        className="absolute z-10 bottom-7 left-1 md:top-1/5 md:left-[15px] w-12 h-12 bg-white border border-gray-300 rounded-full cursor-pointer flex justify-center items-center transition-colors hover:bg-gray-100"
         onClick={goToUserLocation}
       >
         <img src="/assets/my.png" alt="My Location" className="w-8 h-8" />
