@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-// User-provided list of hotspots
+// 핫스팟 목록
 const hotspots = [
   { name: "강남 MICE 관광특구", code: "POI001" },
   { name: "동대문 관광특구", code: "POI002" },
@@ -124,16 +124,15 @@ const hotspots = [
   { name: "홍제폭포", code: "POI128" },
 ];
 
-// 헬퍼 함수: 데이터가 단일 객체일 경우 배열로 감싸줍니다.
 const ensureArray = (data) => {
   if (!data) return [];
   return Array.isArray(data) ? data : [data];
 };
 
-// 헬퍼 함수: 두 지점 간의 거리 계산 (Haversine 공식)
+// 두 지점 간의 거리 계산 (Haversine 공식)
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
-  const R = 6371e3; // metres
-  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radians
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
   const Δφ = ((lat2 - lat1) * Math.PI) / 180;
   const Δλ = ((lng2 - lng1) * Math.PI) / 180;
@@ -143,7 +142,7 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
     Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  const d = R * c; // in metres
+  const d = R * c;
   return d;
 };
 
@@ -307,7 +306,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
                 chargerLat,
                 chargerLng
               );
-              return dist < 300; // Match if within 100 meters
+              return dist < 300;
             });
             lot.evChargers = matchedChargers;
             lot.hasEVCharger = matchedChargers.length > 0;

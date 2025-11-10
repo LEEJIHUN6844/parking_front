@@ -7,10 +7,9 @@ export default function MainPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [parkingLots, setParkingLots] = useState([]);
   const [mapCenter, setMapCenter] = useState(null);
-  const [filterType, setFilterType] = useState("all"); // 'all', 'public', 'private'
-  // const [filterOperatingHours, setFilterOperatingHours] = useState("all"); // ◀◀◀ 1. 운영시간 필터 상태 제거
-  const [filterFees, setFilterFees] = useState("all"); // 'all', 'free', 'paid'
-  const [filterEV, setFilterEV] = useState(false); // boolean
+  const [filterType, setFilterType] = useState("all");
+  const [filterFees, setFilterFees] = useState("all");
+  const [filterEV, setFilterEV] = useState(false);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -18,7 +17,7 @@ export default function MainPage() {
       return;
     }
 
-    // window.kakao가 로드되었는지 확인
+    // kakao map이 로드되었는지 확인
     if (!window.kakao || !window.kakao.maps) {
       alert("지도 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
       return;

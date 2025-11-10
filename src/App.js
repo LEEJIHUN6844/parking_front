@@ -9,13 +9,10 @@ function AppRoutes() {
   return (
     <Router>
       <Routes>
-        {/* Routes with Navbar */}
         <Route element={<Layout />}>
           <Route path="/" element={<Main />} />
           <Route path="/mypage" element={<Mypage />} />
         </Route>
-
-        {/* Routes without Navbar */}
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Signup />} />
       </Routes>
