@@ -1,3 +1,4 @@
+// parking_front/src/components/parking/ParkingListItem.jsx
 import Cookies from "js-cookie";
 
 export default function ParkingListItem({ lot }) {
@@ -13,6 +14,7 @@ export default function ParkingListItem({ lot }) {
 
   const statusColor = isRealtime ? "text-green-600" : "text-gray-500";
 
+  // 1. 찜하기 핸들러 (기존 코드)
   const handleFavoriteAdd = async () => {
     const userData = Cookies.get("user");
     if (!userData) {
@@ -22,7 +24,6 @@ export default function ParkingListItem({ lot }) {
 
     try {
       const user = JSON.parse(userData);
-
       const userEmail = user.email;
       const parkingLotCode = lot.PRK_CD;
 
@@ -36,7 +37,6 @@ export default function ParkingListItem({ lot }) {
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({ userEmail, parkingLotCode }),
       });
 
@@ -53,19 +53,53 @@ export default function ParkingListItem({ lot }) {
     }
   };
 
+  // 🔻🔻🔻 [추가] 2. 길안내 버튼 클릭 핸들러 🔻🔻🔻
+  const handleNavigate = () => {
+    const { PRK_NM, LAT, LNG } = lot;
+
+    // 주차장 이름에 특수문자(+, &, / 등)가 있을 수 있으므로 인코딩합니다.
+    const destinationName = encodeURIComponent(PRK_NM);
+
+    // 카카오내비 웹 길안내 URL
+    const url = `https://map.kakao.com/link/to/${destinationName},${LAT},${LNG}`;
+
+    // 새 탭에서 열기
+    window.open(url, "_blank");
+  };
+  // 🔺🔺🔺 ---------------------------------- 🔺🔺🔺
+
   return (
     <li className="bg-white/70 p-4 rounded-lg shadow-md relative">
-      <button
-        onClick={handleFavoriteAdd}
-        className="absolute top-6 right-8 text-sm font-medium transition-colors bg-sky-500 text-white hover:bg-sky-600 rounded-md px-3 py-1"
-        title="찜하기"
-      >
-        찜하기!
-      </button>
+      {/* 🔻🔻🔻 [수정] 3. 버튼 2개를 위한 레이아웃 수정 🔻🔻🔻 */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        {/* 길안내 버튼 */}
+        <button
+          onClick={handleNavigate}
+          className="text-sm font-medium transition-colors bg-green-500 text-white hover:bg-green-600 rounded-md px-3 py-1"
+          title="길안내"
+        >
+          길안내
+        </button>
 
-      <h3 className="font-bold text-lg text-sky-800 mb-1 pr-10">
+        {/* 찜하기 버튼 */}
+        <button
+          onClick={handleFavoriteAdd}
+          className="text-sm font-medium transition-colors bg-sky-500 text-white hover:bg-sky-600 rounded-md px-3 py-1"
+          title="찜하기"
+        >
+          찜하기
+        </button>
+      </div>
+
+      {/* [수정] 4. 주차장 이름이 버튼과 겹치지 않도록
+        버튼이 차지하는 영역(약 160px)만큼 오른쪽에 여백(pr)을 줍니다.
+        pr-[170px]는 "padding-right: 170px"와 같습니다.
+      */}
+      <h3 className="font-bold text-lg text-sky-800 mb-1 pr-[170px]">
         {lot.PRK_NM}
       </h3>
+      {/* 🔺🔺🔺 ----------------------------------------- 🔺🔺🔺 */}
+
       <p className="text-sm text-gray-700 mb-1">
         <strong>주소:</strong> {lot.ADDRESS || ""}
       </p>

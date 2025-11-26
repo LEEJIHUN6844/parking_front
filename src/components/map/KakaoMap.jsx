@@ -291,7 +291,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
             const distance = Math.sqrt(
               Math.pow(lat - lotLat, 2) + Math.pow(lng - lotLng, 2)
             );
-            if (distance > 0.03) return; // 3km 이상 제외
+            if (distance > 0.02) return; // 3km 이상 제외
 
             let evChargerInfoHtml = "";
 
@@ -306,7 +306,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
                 chargerLat,
                 chargerLng
               );
-              return dist < 300;
+              return dist < 550;
             });
             lot.evChargers = matchedChargers;
             lot.hasEVCharger = matchedChargers.length > 0;
