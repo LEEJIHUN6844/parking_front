@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-// 핫스팟 목록
+// 핫스팟 목록 (109개)
 const hotspots = [
   { name: "강남 MICE 관광특구", code: "POI001" },
   { name: "동대문 관광특구", code: "POI002" },
@@ -232,6 +232,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
 
     setIsLoading(true);
     const allLots = [];
+
     try {
       const center = map.getCenter();
       const lat = center.getLat();
@@ -241,20 +242,14 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
       if (map.markers) map.markers.forEach((marker) => marker.setMap(null));
       map.markers = [];
 
-      for (const spot of hotspots) {
+      //Promise.all로 병렬 요청(서버속도 개선)
+      const requests = hotspots.map(async (spot) => {
         try {
           const res = await fetch(`/api/seoul/parking/${spot.code}`);
           const data = await res.json();
 
           const cityData = data.CITYDATA;
-          console.log(
-            "Fetched cityData for spot code",
-            spot.code,
-            ":",
-            cityData
-          );
-
-          if (!cityData?.PRK_STTS) continue;
+          if (!cityData?.PRK_STTS) return;
 
           const allChargerDetails = [];
           if (cityData.CHARGER_STTS) {
@@ -291,7 +286,7 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
             const distance = Math.sqrt(
               Math.pow(lat - lotLat, 2) + Math.pow(lng - lotLng, 2)
             );
-            if (distance > 0.02) return; // 3km 이상 제외
+            if (distance > 0.02) return; // 2km 이상 제외
 
             let evChargerInfoHtml = "";
 
@@ -386,7 +381,9 @@ const KakaoMap = ({ center, onParkingLotsChange }) => {
         } catch (err) {
           console.error(`Error fetching data for ${spot.name}:`, err);
         }
-      }
+      });
+
+      await Promise.all(requests);
     } finally {
       setIsLoading(false);
       onParkingLotsChange(allLots);

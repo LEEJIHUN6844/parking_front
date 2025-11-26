@@ -1,4 +1,3 @@
-// parking_front/src/components/parking/ParkingListItem.jsx
 import Cookies from "js-cookie";
 
 export default function ParkingListItem({ lot }) {
@@ -14,7 +13,7 @@ export default function ParkingListItem({ lot }) {
 
   const statusColor = isRealtime ? "text-green-600" : "text-gray-500";
 
-  // 1. 찜하기 핸들러 (기존 코드)
+  // 찜하기 핸들러
   const handleFavoriteAdd = async () => {
     const userData = Cookies.get("user");
     if (!userData) {
@@ -53,11 +52,11 @@ export default function ParkingListItem({ lot }) {
     }
   };
 
-  // 🔻🔻🔻 [추가] 2. 길안내 버튼 클릭 핸들러 🔻🔻🔻
+  // 길안내 버튼 클릭 핸들러
   const handleNavigate = () => {
     const { PRK_NM, LAT, LNG } = lot;
 
-    // 주차장 이름에 특수문자(+, &, / 등)가 있을 수 있으므로 인코딩합니다.
+    // 주차장 이름에 특수문자(+, &, / 등)가 있을 수 있으므로 인코딩
     const destinationName = encodeURIComponent(PRK_NM);
 
     // 카카오내비 웹 길안내 URL
@@ -66,11 +65,9 @@ export default function ParkingListItem({ lot }) {
     // 새 탭에서 열기
     window.open(url, "_blank");
   };
-  // 🔺🔺🔺 ---------------------------------- 🔺🔺🔺
 
   return (
     <li className="bg-white/70 p-4 rounded-lg shadow-md relative">
-      {/* 🔻🔻🔻 [수정] 3. 버튼 2개를 위한 레이아웃 수정 🔻🔻🔻 */}
       <div className="absolute top-4 right-4 flex gap-2">
         {/* 길안내 버튼 */}
         <button
@@ -91,14 +88,9 @@ export default function ParkingListItem({ lot }) {
         </button>
       </div>
 
-      {/* [수정] 4. 주차장 이름이 버튼과 겹치지 않도록
-        버튼이 차지하는 영역(약 160px)만큼 오른쪽에 여백(pr)을 줍니다.
-        pr-[170px]는 "padding-right: 170px"와 같습니다.
-      */}
       <h3 className="font-bold text-lg text-sky-800 mb-1 pr-[170px]">
         {lot.PRK_NM}
       </h3>
-      {/* 🔺🔺🔺 ----------------------------------------- 🔺🔺🔺 */}
 
       <p className="text-sm text-gray-700 mb-1">
         <strong>주소:</strong> {lot.ADDRESS || ""}

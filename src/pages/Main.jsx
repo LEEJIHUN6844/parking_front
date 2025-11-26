@@ -131,14 +131,12 @@ export default function MainPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [parkingLots, setParkingLots] = useState([]);
   const [mapCenter, setMapCenter] = useState(null);
-  // 3. (내 위치 연동) userLocation 상태 추가
+
   const [userLocation, setUserLocation] = useState(null);
   const [filterType, setFilterType] = useState("all");
   const [filterFees, setFilterFees] = useState("all");
 
-  // 🔻🔻🔻 [수정] 4. filterEV (boolean) -> filterEVState (string) 🔻🔻🔻
   const [filterEVState, setFilterEVState] = useState("all"); // 'all' 또는 'ev_only'
-  // 🔺🔺🔺 ---------------------------------------------------- 🔺🔺🔺
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -154,13 +152,13 @@ export default function MainPage() {
     const geocoder = new window.kakao.maps.services.Geocoder();
     const places = new window.kakao.maps.services.Places();
 
-    // 1. 주소 검색 먼저 시도
+    // 주소 검색 먼저 시도
     geocoder.addressSearch(searchTerm, (result, status) => {
       if (status === window.kakao.maps.services.Status.OK) {
         const { y: lat, x: lng } = result[0];
         setMapCenter({ lat, lng });
       } else {
-        // 2. 주소 검색 실패 시, 키워드 검색 시도
+        // 주소 검색 실패 시, 키워드 검색 시도
         console.warn("주소 검색 실패, 키워드 검색을 시도합니다:", searchTerm);
 
         places.keywordSearch(searchTerm, (result, status) => {
@@ -168,7 +166,7 @@ export default function MainPage() {
             const { y: lat, x: lng } = result[0];
             setMapCenter({ lat, lng });
           } else {
-            // 3. 두 검색 모두 실패
+            // 두 검색 모두 실패
             alert("검색 결과가 없습니다. 다시 시도해주세요.");
           }
         });
@@ -176,7 +174,7 @@ export default function MainPage() {
     });
   };
 
-  // 🔻🔻🔻 [수정] 5. useMemo 로직을 단일 리스트 반환으로 변경 🔻🔻🔻
+  // useMemo 로직을 단일 리스트 반환으로 변경
   const filteredParkingLots = useMemo(() => {
     let filtered = parkingLots;
 
@@ -211,10 +209,6 @@ export default function MainPage() {
 
     return filtered;
   }, [parkingLots, filterType, filterFees, filterEVState]); // 6. 의존성 배열 수정
-  // 🔺🔺🔺 ------------------------------------ 🔺🔺🔺
-
-  // [제거] 7. 기존의 두 개 리스트를 반환하던 변수들 제거
-  // const { regularParkingLots, evChargingStations } = getFilteredParkingLots;
 
   return (
     <div className="relative w-full h-full min-h-screen">
@@ -343,7 +337,6 @@ export default function MainPage() {
                   </div>
                 </div>
 
-                {/* 🔻🔻🔻 [수정] 10. 전기차 충전소 필터를 Checkbox에서 Radio로 변경 🔻🔻🔻 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     전기차 충전기
@@ -373,11 +366,9 @@ export default function MainPage() {
                     </label>
                   </div>
                 </div>
-                {/* 🔺🔺🔺 --------------------------------------------------- 🔺🔺🔺 */}
               </div>
             </div>
 
-            {/* 🔻🔻🔻 [수정] 11. ParkingList 렌더링 로직을 하나로 통합 🔻🔻🔻 */}
             <ParkingList
               title={
                 filterEVState === "ev_only"
@@ -387,7 +378,6 @@ export default function MainPage() {
               parkingLots={filteredParkingLots}
               userLocation={userLocation}
             />
-            {/* 🔺🔺🔺 ---------------------------------------------- 🔺🔺🔺 */}
           </div>
         </div>
       </main>
