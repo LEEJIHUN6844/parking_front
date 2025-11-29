@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import RoadviewModal from "../components/common/RoadviewModal";
 
 const UserProfile = ({ user }) => (
   <div>
@@ -35,35 +36,75 @@ const UserProfile = ({ user }) => (
   </div>
 );
 
-const FavoriteItem = ({ item, onRemove }) => (
-  <li className="p-4 border rounded-md relative">
-    <p className="font-semibold text-sky-800">{item.prk_name}</p>
-    <p className="text-sm text-gray-700 mt-1">
-      <strong>주소:</strong> {item.address || item.road_address || "정보 없음"}
-    </p>
-    <p className="text-sm text-gray-700 mt-1">
-      <strong>요금:</strong>{" "}
-      {item.rates && String(item.rates) !== "0"
-        ? `${item.rates}원 / ${item.time_rates || "?"}분`
-        : "무료 또는 정보 없음"}
-    </p>
-    <button
-      onClick={() => onRemove(item.favorite_id)}
-      className="absolute top-3 right-3 text-red-500 hover:text-red-700 text-2xl font-bold"
-      title="찜 삭제"
-    >
-      &times;
-    </button>
-  </li>
-);
+const FavoriteItem = ({ item, onRemove, onShowRoadview }) => {
+  // 길안내 핸들러
+  const handleNavigate = () => {
+    const { prk_name, lat, lng } = item;
 
-const FavoriteList = ({ favorites, setFavorites }) => {
+    if (!lat || !lng) {
+      alert("위치 정보가 없어 길안내를 시작할 수 없습니다.");
+      return;
+    }
+
+    const destinationName = encodeURIComponent(prk_name);
+    const url = `https://map.kakao.com/link/to/${destinationName},${lat},${lng}`;
+    window.open(url, "_blank");
+  };
+
+  return (
+    <li className="p-4 border rounded-md relative">
+      <div className="absolute top-3 right-3 flex gap-2 items-center">
+        {/* 로드뷰 버튼 */}
+        <button
+          onClick={() => onShowRoadview(item)}
+          className="text-sm font-medium bg-purple-500 text-white hover:bg-purple-600 rounded-md px-3 py-1 transition-colors"
+          title="로드뷰 보기"
+        >
+          로드뷰
+        </button>
+
+        {/* 길안내 버튼 */}
+        <button
+          onClick={handleNavigate}
+          className="text-sm font-medium bg-green-500 text-white hover:bg-green-600 rounded-md px-3 py-1 transition-colors"
+          title="길안내"
+        >
+          길안내
+        </button>
+
+        {/* 삭제 버튼 */}
+        <button
+          onClick={() => onRemove(item.favorite_id)}
+          className="text-red-500 hover:text-red-700 text-2xl font-bold leading-none ml-1"
+          title="찜 삭제"
+        >
+          &times;
+        </button>
+      </div>
+
+      <h3 className="font-semibold text-lg text-sky-800 pr-[170px]">
+        {item.prk_name}
+      </h3>
+      <p className="text-sm text-gray-700 mt-1">
+        <strong>주소:</strong>{" "}
+        {item.address || item.road_address || "정보 없음"}
+      </p>
+      <p className="text-sm text-gray-700 mt-1">
+        <strong>요금:</strong>{" "}
+        {item.rates && String(item.rates) !== "0"
+          ? `${item.rates}원 / ${item.time_rates || "?"}분`
+          : "무료 또는 정보 없음"}
+      </p>
+    </li>
+  );
+};
+
+const FavoriteList = ({ favorites, setFavorites, onShowRoadview }) => {
   const handleFavoriteRemove = async (favoriteId) => {
     if (!window.confirm("이 항목을 찜 목록에서 삭제하시겠습니까?")) {
       return;
     }
     try {
-      // 찜 삭제 API 호출
       const response = await fetch(`/api/favorites/${favoriteId}`, {
         method: "DELETE",
       });
@@ -92,6 +133,7 @@ const FavoriteList = ({ favorites, setFavorites }) => {
               key={item.favorite_id}
               item={item}
               onRemove={handleFavoriteRemove}
+              onShowRoadview={onShowRoadview}
             />
           ))}
         </ul>
@@ -108,6 +150,9 @@ export default function Mypage() {
   const [favorites, setFavorites] = useState([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
 
+  // 로드뷰 타겟 상태 추가
+  const [roadviewTarget, setRoadviewTarget] = useState(null);
+
   useEffect(() => {
     const userData = Cookies.get("user");
     if (userData) {
@@ -119,7 +164,6 @@ export default function Mypage() {
     }
   }, []);
 
-  // 찜 목록 불러오기
   useEffect(() => {
     if (user && user.email && activeTab === "favorites") {
       const fetchFavorites = async () => {
@@ -144,11 +188,22 @@ export default function Mypage() {
     }
   }, [user, activeTab]);
 
+  // 로드뷰 핸들러
+  const handleShowRoadview = (item) => {
+    setRoadviewTarget({ lat: item.lat, lng: item.lng });
+  };
+
   return (
-    <div className="container mx-auto p-4 pt-16">
-      <div className="flex">
+    <div className="container mx-auto p-4 pt-16 relative">
+      {/* 로드뷰 모달 추가 */}
+      <RoadviewModal
+        position={roadviewTarget}
+        onClose={() => setRoadviewTarget(null)}
+      />
+
+      <div className="flex flex-col md:flex-row">
         {/* 사이드바 */}
-        <aside className="w-1/4 pr-8">
+        <aside className="w-full md:w-1/4 md:pr-8 mb-6 md:mb-0">
           <nav className="space-y-2">
             <button
               onClick={() => setActiveTab("profile")}
@@ -173,13 +228,17 @@ export default function Mypage() {
           </nav>
         </aside>
 
-        <main className="w-3/4">
+        <main className="w-full md:w-3/4">
           {activeTab === "profile" && <UserProfile user={user} />}
           {activeTab === "favorites" &&
             (isLoadingFavorites ? (
               <p>찜 목록을 불러오는 중입니다...</p>
             ) : (
-              <FavoriteList favorites={favorites} setFavorites={setFavorites} />
+              <FavoriteList
+                favorites={favorites}
+                setFavorites={setFavorites}
+                onShowRoadview={handleShowRoadview}
+              />
             ))}
         </main>
       </div>

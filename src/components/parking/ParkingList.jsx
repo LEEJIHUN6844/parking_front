@@ -1,6 +1,6 @@
 import ParkingListItem from "./ParkingListItem";
 
-export default function ParkingList({ parkingLots, loading }) {
+export default function ParkingList({ parkingLots, loading, onShowRoadview }) {
   if (loading) {
     return <p className="text-gray-500">검색 중...</p>;
   }
@@ -13,7 +13,11 @@ export default function ParkingList({ parkingLots, loading }) {
       {parkingLots.length > 0 ? (
         <ul className="space-y-4">
           {parkingLots.map((lot, index) => (
-            <ParkingListItem key={lot.id || index} lot={lot} />
+            <ParkingListItem
+              key={lot.id || index}
+              lot={lot}
+              onShowRoadview={onShowRoadview}
+            />
           ))}
         </ul>
       ) : (

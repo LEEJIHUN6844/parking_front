@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect } from "react"; // 1. useEffect 추가
+import { useState, useMemo } from "react";
 import KakaoMap from "../components/map/KakaoMap";
 import SearchBar from "../components/search/SearchBar";
 import ParkingList from "../components/parking/ParkingList";
+import RoadviewModal from "../components/common/RoadviewModal";
+import { calculateDistance } from "../utils/calculateDistance";
 
-// 2. hotspots 목록 (이전 단계에서 KakaoMap.jsx에서 이곳으로 이동)
+// 핫스팟 목록
 const hotspots = [
   { name: "강남 MICE 관광특구", code: "POI001" },
   { name: "동대문 관광특구", code: "POI002" },
@@ -131,12 +133,16 @@ export default function MainPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [parkingLots, setParkingLots] = useState([]);
   const [mapCenter, setMapCenter] = useState(null);
-
   const [userLocation, setUserLocation] = useState(null);
+
+  // 필터 상태
   const [filterType, setFilterType] = useState("all");
   const [filterFees, setFilterFees] = useState("all");
+  const [filterEVState, setFilterEVState] = useState("all");
+  const [filterRadius, setFilterRadius] = useState("all");
 
-  const [filterEVState, setFilterEVState] = useState("all"); // 'all' 또는 'ev_only'
+  // 로드뷰 타겟 상태
+  const [roadviewTarget, setRoadviewTarget] = useState(null);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -174,11 +180,16 @@ export default function MainPage() {
     });
   };
 
-  // useMemo 로직을 단일 리스트 반환으로 변경
-  const filteredParkingLots = useMemo(() => {
-    let filtered = parkingLots;
+  // 로드뷰 핸들러
+  const handleShowRoadview = (lot) => {
+    setRoadviewTarget({ lat: lot.LAT, lng: lot.LNG });
+  };
 
-    // --- 1. 유형 필터 (공영/민영) ---
+  // 필터 및 정렬 로직 통합
+  const filteredParkingLots = useMemo(() => {
+    let filtered = [...parkingLots];
+
+    // 1. 유형 필터
     if (filterType === "public") {
       filtered = filtered.filter(
         (lot) =>
@@ -194,24 +205,84 @@ export default function MainPage() {
       );
     }
 
-    // --- 2. 요금 필터 (무료/유료) ---
+    // 2. 요금 필터
+    let isSortByPrice = false;
+
     if (filterFees === "free") {
       filtered = filtered.filter((lot) => String(lot.RATES) === "0");
     } else if (filterFees === "paid") {
       filtered = filtered.filter((lot) => String(lot.RATES) !== "0");
+    } else if (filterFees === "price_asc") {
+      isSortByPrice = true;
     }
 
-    // --- 3. 전기차 필터 (새로운 로직) ---
+    // 3. 전기차 필터
     if (filterEVState === "ev_only") {
       filtered = filtered.filter((lot) => lot.hasEVCharger);
     }
-    // 'all'일 경우 (기본값) 아무것도 하지 않음
+
+    // 4. 거리 반경 필터
+    if (filterRadius !== "all" && userLocation) {
+      const radiusKm = parseFloat(filterRadius);
+      const radiusMeters = radiusKm * 1000;
+
+      filtered = filtered.filter((lot) => {
+        if (!lot.LAT || !lot.LNG) return false;
+        const dist = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          parseFloat(lot.LAT),
+          parseFloat(lot.LNG)
+        );
+        return dist <= radiusMeters;
+      });
+    }
+
+    // 5. 최종 정렬
+    if (isSortByPrice) {
+      // 요금 낮은 순 정렬
+      filtered.sort((a, b) => {
+        // 요금 정보가 없거나 0인 경우의 처리 (여기서는 단순히 숫자로 비교)
+        const priceA = a.RATES ? parseInt(a.RATES, 10) : 999999;
+        const priceB = b.RATES ? parseInt(b.RATES, 10) : 999999;
+        return priceA - priceB;
+      });
+    } else if (userLocation) {
+      filtered.sort((a, b) => {
+        const distA = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          a.LAT,
+          a.LNG
+        );
+        const distB = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          b.LAT,
+          b.LNG
+        );
+        return distA - distB;
+      });
+    }
 
     return filtered;
-  }, [parkingLots, filterType, filterFees, filterEVState]); // 6. 의존성 배열 수정
+  }, [
+    parkingLots,
+    filterType,
+    filterFees,
+    filterEVState,
+    filterRadius,
+    userLocation,
+  ]);
 
   return (
     <div className="relative w-full h-full min-h-screen">
+      {/* 로드뷰 모달 */}
+      <RoadviewModal
+        position={roadviewTarget}
+        onClose={() => setRoadviewTarget(null)}
+      />
+
       <div
         className="fixed inset-0 z-0"
         style={{
@@ -231,7 +302,6 @@ export default function MainPage() {
               아래에서 주차장을 검색하거나 지도를 통해 위치를 확인해보세요!
             </p>
 
-            {/* 8. (자동완성) SearchBar에 hotspots prop 전달 */}
             <SearchBar
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -239,7 +309,6 @@ export default function MainPage() {
               hotspots={hotspots}
             />
 
-            {/* 9. (내 위치, 자동완성) KakaoMap에 props 전달 */}
             <KakaoMap
               center={mapCenter}
               onParkingLotsChange={setParkingLots}
@@ -248,123 +317,86 @@ export default function MainPage() {
               hotspots={hotspots}
             />
 
-            {/* 필터링 UI */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg shadow-inner">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">필터</h2>
+            {/* 필터 UI - 4칸 그리드 */}
+            <div className="mt-8 p-6 bg-gray-50 rounded-lg shadow-inner border border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <span>🔍</span> 필터 옵션
+                </h2>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
-                {/* 공영/민영 필터 (기존과 동일) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {/* 1. 유형 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-semibold text-gray-600 mb-2">
                     유형
                   </label>
-                  <div className="mt-1 flex space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="parkingType"
-                        value="all"
-                        checked={filterType === "all"}
-                        onChange={(e) => setFilterType(e.target.value)}
-                      />
-                      <span className="ml-2">전체</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="parkingType"
-                        value="public"
-                        checked={filterType === "public"}
-                        onChange={(e) => setFilterType(e.target.value)}
-                      />
-                      <span className="ml-2">공영</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="parkingType"
-                        value="private"
-                        checked={filterType === "private"}
-                        onChange={(e) => setFilterType(e.target.value)}
-                      />
-                      <span className="ml-2">민영</span>
-                    </label>
-                  </div>
+                  <select
+                    className="w-full h-10 border border-gray-300 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm cursor-pointer"
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                  >
+                    <option value="all">전체</option>
+                    <option value="public">공영</option>
+                    <option value="private">민영</option>
+                  </select>
                 </div>
 
-                {/* 요금 필터 (기존과 동일) */}
+                {/* 2. 요금 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    요금
+                  <label className="block text-sm font-semibold text-gray-600 mb-2">
+                    요금 / 정렬
                   </label>
-                  <div className="mt-1 flex space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="fees"
-                        value="all"
-                        checked={filterFees === "all"}
-                        onChange={(e) => setFilterFees(e.target.value)}
-                      />
-                      <span className="ml-2">전체</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="fees"
-                        value="free"
-                        checked={filterFees === "free"}
-                        onChange={(e) => setFilterFees(e.target.value)}
-                      />
-                      <span className="ml-2">무료</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="fees"
-                        value="paid"
-                        checked={filterFees === "paid"}
-                        onChange={(e) => setFilterFees(e.target.value)}
-                      />
-                      <span className="ml-2">유료</span>
-                    </label>
-                  </div>
+                  <select
+                    className="w-full h-10 border border-gray-300 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm cursor-pointer"
+                    value={filterFees}
+                    onChange={(e) => setFilterFees(e.target.value)}
+                  >
+                    <option value="all">전체 (거리순)</option>
+                    <option value="free">무료</option>
+                    <option value="paid">유료</option>
+                    <option value="price_asc">요금 낮은 순</option>
+                  </select>
                 </div>
 
+                {/* 3. 전기차 필터 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    전기차 충전기
+                  <label className="block text-sm font-semibold text-gray-600 mb-2">
+                    전기차
                   </label>
-                  <div className="mt-1 flex space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="evFilter"
-                        value="all"
-                        checked={filterEVState === "all"}
-                        onChange={(e) => setFilterEVState(e.target.value)}
-                      />
-                      <span className="ml-2">전체</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio"
-                        name="evFilter"
-                        value="ev_only"
-                        checked={filterEVState === "ev_only"}
-                        onChange={(e) => setFilterEVState(e.target.value)}
-                      />
-                      <span className="ml-2">충전기만</span>
-                    </label>
-                  </div>
+                  <select
+                    className="w-full h-10 border border-gray-300 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm cursor-pointer"
+                    value={filterEVState}
+                    onChange={(e) => setFilterEVState(e.target.value)}
+                  >
+                    <option value="all">전체</option>
+                    <option value="ev_only">충전기 보유</option>
+                  </select>
+                </div>
+
+                {/* 4. 거리 반경 필터 */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-2">
+                    거리 반경
+                  </label>
+                  <select
+                    className="w-full h-10 border border-gray-300 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm cursor-pointer"
+                    value={filterRadius}
+                    onChange={(e) => {
+                      if (e.target.value !== "all" && !userLocation) {
+                        alert(
+                          "내 위치 정보를 먼저 가져와야 합니다. (지도 좌측 하단 버튼)"
+                        );
+                      }
+                      setFilterRadius(e.target.value);
+                    }}
+                  >
+                    <option value="all">제한 없음</option>
+                    <option value="1">1km 이내</option>
+                    <option value="2">2km 이내</option>
+                    <option value="3">3km 이내</option>
+                    <option value="5">5km 이내</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -377,6 +409,7 @@ export default function MainPage() {
               }
               parkingLots={filteredParkingLots}
               userLocation={userLocation}
+              onShowRoadview={handleShowRoadview}
             />
           </div>
         </div>

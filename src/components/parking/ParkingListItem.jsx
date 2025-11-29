@@ -1,10 +1,11 @@
 import Cookies from "js-cookie";
 
-export default function ParkingListItem({ lot }) {
+export default function ParkingListItem({ lot, onShowRoadview }) {
   const isRealtime =
     lot.CUR_PRK_YN === "Y" &&
     lot.CUR_PRK_CNT !== null &&
     lot.CUR_PRK_CNT !== undefined;
+
   const availableSpaces = lot.CPCTY - (lot.CUR_PRK_CNT || 0);
 
   const statusText = isRealtime
@@ -55,20 +56,33 @@ export default function ParkingListItem({ lot }) {
   // 길안내 버튼 클릭 핸들러
   const handleNavigate = () => {
     const { PRK_NM, LAT, LNG } = lot;
-
-    // 주차장 이름에 특수문자(+, &, / 등)가 있을 수 있으므로 인코딩
     const destinationName = encodeURIComponent(PRK_NM);
-
-    // 카카오내비 웹 길안내 URL
     const url = `https://map.kakao.com/link/to/${destinationName},${LAT},${LNG}`;
-
-    // 새 탭에서 열기
     window.open(url, "_blank");
   };
+
+  // 전기차 충전기 상태 텍스트 계산
+  const evChargerText =
+    lot.evChargers && lot.evChargers.length > 0
+      ? `${
+          lot.evChargers.filter(
+            (charger) => charger.CHARGER_STAT === "사용가능"
+          ).length
+        } / ${lot.evChargers.length}`
+      : "정보 없음";
 
   return (
     <li className="bg-white/70 p-4 rounded-lg shadow-md relative">
       <div className="absolute top-4 right-4 flex gap-2">
+        {/* 로드뷰 버튼 */}
+        <button
+          onClick={() => onShowRoadview(lot)}
+          className="text-sm font-medium transition-colors bg-purple-500 text-white hover:bg-purple-600 rounded-md px-3 py-1"
+          title="로드뷰 보기"
+        >
+          로드뷰
+        </button>
+
         {/* 길안내 버튼 */}
         <button
           onClick={handleNavigate}
@@ -88,7 +102,7 @@ export default function ParkingListItem({ lot }) {
         </button>
       </div>
 
-      <h3 className="font-bold text-lg text-sky-800 mb-1 pr-[170px]">
+      <h3 className="font-bold text-lg text-sky-800 mb-1 pr-[220px]">
         {lot.PRK_NM}
       </h3>
 
@@ -104,14 +118,7 @@ export default function ParkingListItem({ lot }) {
       </p>
 
       <p className="text-sm text-sky-700 mb-2">
-        <strong>전기차 충전 가능 대수:</strong>{" "}
-        {lot.evChargers && lot.evChargers.length > 0
-          ? `${
-              lot.evChargers.filter(
-                (charger) => charger.CHARGER_STAT === "사용가능"
-              ).length
-            } / ${lot.evChargers.length}`
-          : "정보 없음"}
+        <strong>전기차 충전 가능 대수:</strong> {evChargerText}
       </p>
 
       <div className={`font-bold ${statusColor}`}>{statusText}</div>
